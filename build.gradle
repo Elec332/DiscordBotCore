@@ -1,0 +1,40 @@
+plugins {
+    id "java-library"
+    id "nl.elec332.gradle.ossrhplugin" version "1.1.0"
+}
+
+group 'nl.elec332.discord.bot.core'
+version '1.0-Beta1'
+
+sourceCompatibility = targetCompatibility = 11
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://m2.dv8tion.net/releases'
+    }
+}
+
+dependencies {
+    api('net.dv8tion:JDA:4.2.1_262') {
+        exclude module: 'opus-java'
+    }
+    implementation "com.fasterxml.jackson.core:jackson-core:2.12.3" //Newer version of jackson-core for JMPS
+}
+
+ossrh {
+    description = 'DiscordBotCore'
+    githubUrl = 'https://github.com/Elec332/DiscordBotCore'
+
+    license {
+        name = 'GNU Lesser General Public License, version 2.1'
+        url = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt'
+    }
+    developer {
+        name = 'Elec332'
+    }
+}
+
+javadoc {
+    modularity.inferModulePath = false
+}
