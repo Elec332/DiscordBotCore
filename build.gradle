@@ -3,8 +3,8 @@ plugins {
     id "nl.elec332.gradle.ossrhplugin" version "1.1.0"
 }
 
-group 'nl.elec332.discord.bot.core'
-version '1.0-Beta1'
+group 'nl.elec332.discord.bot'
+version '1.0-Beta2'
 
 sourceCompatibility = targetCompatibility = 11
 
@@ -20,6 +20,7 @@ dependencies {
         exclude module: 'opus-java'
     }
     implementation "com.fasterxml.jackson.core:jackson-core:2.12.3" //Newer version of jackson-core for JMPS
+    compileOnly "com.google.code.gson:gson:2.8.6"
 }
 
 ossrh {
