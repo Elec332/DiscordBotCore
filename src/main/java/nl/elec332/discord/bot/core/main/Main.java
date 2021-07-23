@@ -43,7 +43,8 @@ public class Main {
                 .collect(Collectors.toSet());
         Function<String, String> propGetter = loadProperties(props);
         props.clear();
-        pls.forEach(pl -> pl.handleProperties(propGetter));
+        List<String> argz = Arrays.asList(args);
+        pls.forEach(pl -> pl.handleProperties(propGetter, Collections.unmodifiableList(argz)));
         pls.forEach(pl -> pl.addHelpCommandNames(props::add));
 
         Map<IBotModule<?>, Set<ICommand<?>>> modules = ServiceLoader.load(IBotModule.class).stream()
