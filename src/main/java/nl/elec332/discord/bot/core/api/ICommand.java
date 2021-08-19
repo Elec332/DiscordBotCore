@@ -1,8 +1,8 @@
 package nl.elec332.discord.bot.core.api;
 
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
 
 import java.util.Collection;
 
@@ -17,7 +17,7 @@ public interface ICommand<C> {
 
     Collection<String> getAliases();
 
-    boolean executeCommand(MessageChannel channel, Member member, C config, String... args);
+    boolean executeCommand(MessageChannel channel, Message message, Member member, C config, String... args);
 
     default boolean isHidden() {
         return false;

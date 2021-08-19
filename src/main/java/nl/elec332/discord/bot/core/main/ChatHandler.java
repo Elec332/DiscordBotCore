@@ -46,8 +46,9 @@ public class ChatHandler extends ListenerAdapter {
             }
             msg = msg.substring(1);
 
-            String command = msg.split(" ")[0].toLowerCase(Locale.ROOT);
+            String command = msg.split(" ")[0];
             String args = msg.replace(command, "").trim();
+            command = command.toLowerCase(Locale.ROOT);
 
             if (member == null && guild != null || event.isWebhookMessage()) {
                 textChannel.sendMessage("You cannot send commands from a webhook!").submit();
@@ -58,12 +59,12 @@ public class ChatHandler extends ListenerAdapter {
             } else {
                 System.out.printf("(Private channel)[%s {%s}]<%s|%s>: %s\n", textChannel.getName(), textChannel.getId(), event.getAuthor().getId(), event.getAuthor().getName(), msg);
             }
-            processCommand(textChannel, command, args, member, guild == null ? -1 : guild.getIdLong());
+            processCommand(textChannel, message, command, args, member, guild == null ? -1 : guild.getIdLong());
         }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void processCommand(MessageChannel channel, String command, String args, Member member, long serverId) {
+    private void processCommand(MessageChannel channel, Message message, String command, String args, Member member, long serverId) {
         for (String s : helpNames) {
             if (command.equals(s)) {
                 executeHelpCommand(channel);
@@ -85,7 +86,7 @@ public class ChatHandler extends ListenerAdapter {
                     if (!module.canRunCommand(channel, member, cfg, cmd)) {
                         continue;
                     }
-                    if (cmd.executeCommand(channel, member, cfg, args)) {
+                    if (cmd.executeCommand(channel, message, member, cfg, args)) {
                         return;
                     }
                 }
@@ -121,7 +122,7 @@ public class ChatHandler extends ListenerAdapter {
             }
         });
 
-        channel.sendMessage(builder.build()).submit();
+        channel.sendMessageEmbeds(builder.build()).submit();
     }
 
 }
