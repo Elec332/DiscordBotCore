@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import nl.elec332.discord.bot.core.api.IBotModule;
 import nl.elec332.discord.bot.core.api.ICommand;
+import nl.elec332.discord.bot.core.util.AsyncExecutor;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public class ChatHandler extends ListenerAdapter {
 
-    public ChatHandler(Map<IBotModule<?>, Set<ICommand<?>>> modules, Collection<String> helpNames) {
+    ChatHandler(Map<IBotModule<?>, Set<ICommand<?>>> modules, Collection<String> helpNames) {
         this.modules = modules;
         this.helpNames = helpNames.stream().map(s -> s.toLowerCase(Locale.ROOT)).collect(Collectors.toList());
     }
@@ -76,20 +77,22 @@ public class ChatHandler extends ListenerAdapter {
                 IBotModule module = e.getKey();
                 Set<ICommand<?>> commands = e.getValue();
                 Object cfg = serverId < 0 ? null : module.getInstanceFor(serverId);
-                for (ICommand cmd : commands) {
-                    if (!command.equals(cmd.toString().toLowerCase(Locale.ROOT)) && !cmd.getAliases().contains(command)) {
-                        continue;
+                AsyncExecutor.executeAsync(() -> {
+                    for (ICommand cmd : commands) {
+                        if (!command.equals(cmd.toString().toLowerCase(Locale.ROOT)) && !cmd.getAliases().contains(command)) {
+                            continue;
+                        }
+                        if (cfg == null && ! cmd.canRunAsPrivateCommand()) {
+                            continue;
+                        }
+                        if (!module.canRunCommand(channel, member, cfg, cmd)) {
+                            continue;
+                        }
+                        if (cmd.executeCommand(channel, message, member, cfg, args)) {
+                            return;
+                        }
                     }
-                    if (cfg == null && ! cmd.canRunAsPrivateCommand()) {
-                        continue;
-                    }
-                    if (!module.canRunCommand(channel, member, cfg, cmd)) {
-                        continue;
-                    }
-                    if (cmd.executeCommand(channel, message, member, cfg, args)) {
-                        return;
-                    }
-                }
+                });
             }
         } catch (InsufficientPermissionException e) {
             channel.sendMessage("The bot has insufficient permissions to perform this command!\n Please re-invite the bot with the following link. (Settings will be saved)\n" + Main.INVITE_URL).submit();

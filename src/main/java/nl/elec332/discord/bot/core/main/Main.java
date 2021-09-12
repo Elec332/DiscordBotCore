@@ -47,67 +47,74 @@ public class Main {
         pls.forEach(pl -> pl.handleProperties(propGetter, Collections.unmodifiableList(argz)));
         pls.forEach(pl -> pl.addHelpCommandNames(props::add));
 
-        Map<IBotModule<?>, Set<ICommand<?>>> modules = ServiceLoader.load(IBotModule.class).stream()
+        Collection<IBotModule<?>> modules = ServiceLoader.load(IBotModule.class).stream()
                 .map(ServiceLoader.Provider::get)
-                .peek(m_ -> {
-                    if (m_ instanceof IConfigurableBotModule) {
-                        IConfigurableBotModule<?> m = (IConfigurableBotModule<?>) m_;
-                        File f = BotHelper.getFile(m.getModuleName().toLowerCase(Locale.ROOT) + ".dmc");
-                        if (f.exists()) {
-                            try {
-                                synchronized (m) {
-                                    ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(f)));
-                                    int ver = ois.readInt();
-                                    m.deserialize(ois, ver);
-                                    ois.close();
-                                }
-                            } catch (Exception en) {
-                                try {
-                                    synchronized (m) {
-                                        ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(f.getAbsolutePath() + ".back")));
-                                        int ver = ois.readInt();
-                                        m.deserialize(ois, ver);
-                                        ois.close();
-                                    }
-                                } catch (Exception e) {
-                                    throw new RuntimeException("Failed to load settings from module: " + m.getModuleName(), en);
-                                }
-                            }
-                        }
-                        Runnable save = () -> {
-                            try {
-                                synchronized (m) {
-                                    File back = new File(f.getAbsolutePath() + ".back");
-                                    if (f.exists()) {
-                                        Files.move(f.toPath(), back.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                                    }
-                                    ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream(f)));
-                                    oos.writeInt(m.getFileVersion());
-                                    m.serialize(oos);
-                                    oos.close();
-                                    if (back.exists() && !back.delete()) {
-                                        throw new IOException();
-                                    }
-                                }
-                            } catch (Exception e) {
-                                throw new RuntimeException("Failed save settings from module: " + m.getModuleName(), e);
-                            }
-                        };
-                        synchronized (m) {
-                            m.initialize(save);
-                        }
-                    }
-                }).collect(Collectors.toMap(k -> k, k -> {
+                .collect(Collectors.toList());
+
+        Map<IBotModule<?>, Set<ICommand<?>>> commands = modules.stream()
+                .collect(Collectors.toMap(k -> k, k -> {
                     Set<ICommand<?>> ret = new HashSet<>();
-                    k.registerCommands(c -> ret.add((ICommand<?>) c));
+                    k.registerCommands(ret::add);
                     return ret;
                 }));
+
+        modules.forEach(m_ -> {
+            if (m_ instanceof IConfigurableBotModule) {
+                IConfigurableBotModule<?> m = (IConfigurableBotModule<?>) m_;
+                File f = BotHelper.getFile(m.getModuleName().toLowerCase(Locale.ROOT) + ".dmc");
+                if (f.exists()) {
+                    try {
+                        synchronized (m) {
+                            ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(f)));
+                            int ver = ois.readInt();
+                            m.deserialize(ois, ver);
+                            ois.close();
+                        }
+                    } catch (Exception en) {
+                        try {
+                            synchronized (m) {
+                                ObjectInputStream ois = new ObjectInputStream(new GZIPInputStream(new FileInputStream(f.getAbsolutePath() + ".back")));
+                                int ver = ois.readInt();
+                                m.deserialize(ois, ver);
+                                ois.close();
+                            }
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to load settings from module: " + m.getModuleName(), en);
+                        }
+                    }
+                }
+                Runnable save = () -> {
+                    try {
+                        synchronized (m) {
+                            File back = new File(f.getAbsolutePath() + ".back");
+                            if (f.exists()) {
+                                Files.move(f.toPath(), back.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                            }
+                            ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(new FileOutputStream(f)));
+                            oos.writeInt(m.getFileVersion());
+                            m.serialize(oos);
+                            oos.close();
+                            if (back.exists() && !back.delete()) {
+                                throw new IOException();
+                            }
+                        }
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed save settings from module: " + m.getModuleName(), e);
+                    }
+                };
+                synchronized (m) {
+                    m.initialize(save);
+                }
+            }
+        });
+
         try {
             JDA jda = JDABuilder.createDefault(TOKEN).enableIntents(GatewayIntent.GUILD_MEMBERS).build();
             jda.awaitReady();
-            jda.addEventListener(new ChatHandler(Collections.unmodifiableMap(modules), props));
+            jda.addEventListener(new ChatHandler(Collections.unmodifiableMap(commands), props));
 
-            modules.keySet().forEach(m -> m.onBotConnected(jda));
+            pls.forEach(c -> c.onJDAReady(jda));
+            modules.forEach(m -> m.onBotConnected(jda));
             System.out.println("Finished Building JDA!");
         } catch (LoginException | InterruptedException e) {
             e.printStackTrace();
