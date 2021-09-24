@@ -49,6 +49,7 @@ public class Main {
 
         Collection<IBotModule<?>> modules = ServiceLoader.load(IBotModule.class).stream()
                 .map(ServiceLoader.Provider::get)
+                .map(a -> (IBotModule<?>) a) //Thank the compiler for this one
                 .collect(Collectors.toList());
 
         Map<IBotModule<?>, Set<ICommand<?>>> commands = modules.stream()
@@ -111,10 +112,11 @@ public class Main {
         try {
             JDA jda = JDABuilder.createDefault(TOKEN).enableIntents(GatewayIntent.GUILD_MEMBERS).build();
             jda.awaitReady();
-            jda.addEventListener(new ChatHandler(Collections.unmodifiableMap(commands), props));
 
             pls.forEach(c -> c.onJDAReady(jda));
             modules.forEach(m -> m.onBotConnected(jda));
+            jda.addEventListener(new ChatHandler(Collections.unmodifiableMap(commands), props));
+            jda.addEventListener(new SpecialMessageHandler(Collections.unmodifiableCollection(modules), jda));
             System.out.println("Finished Building JDA!");
         } catch (LoginException | InterruptedException e) {
             e.printStackTrace();

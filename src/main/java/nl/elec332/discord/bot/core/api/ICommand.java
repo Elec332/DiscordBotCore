@@ -17,7 +17,7 @@ public interface ICommand<C> {
 
     Collection<String> getAliases();
 
-    boolean executeCommand(MessageChannel channel, Message message, Member member, C config, String... args);
+    boolean executeCommand(MessageChannel channel, Message message, Member member, C config, String args);
 
     default boolean isHidden() {
         return false;

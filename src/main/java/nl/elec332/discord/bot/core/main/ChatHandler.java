@@ -82,7 +82,7 @@ public class ChatHandler extends ListenerAdapter {
                         if (!command.equals(cmd.toString().toLowerCase(Locale.ROOT)) && !cmd.getAliases().contains(command)) {
                             continue;
                         }
-                        if (cfg == null && ! cmd.canRunAsPrivateCommand()) {
+                        if (cfg == null && !cmd.canRunAsPrivateCommand()) {
                             continue;
                         }
                         if (!module.canRunCommand(channel, member, cfg, cmd)) {
