@@ -2,7 +2,7 @@ package nl.elec332.discord.bot.core.util;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import nl.elec332.discord.bot.core.main.Main;
 
 import java.io.File;
@@ -30,7 +30,7 @@ public class BotHelper {
     public static class MessageReference {
 
         public static MessageReference of(Message message) {
-            return new MessageReference(message.getTextChannel().getIdLong(), message.getIdLong());
+            return new MessageReference(message.getChannel().getIdLong(), message.getIdLong());
         }
 
         public static MessageReference read(ObjectInputStream ois) throws IOException {

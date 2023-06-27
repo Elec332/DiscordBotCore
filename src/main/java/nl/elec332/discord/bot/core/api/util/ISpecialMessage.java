@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.function.Supplier;
 
 /**
  * Created by Elec332 on 10/09/2021
@@ -32,11 +33,11 @@ public interface ISpecialMessage {
 
     void onMessageQuoted(MessageReceivedEvent userReaction, Runnable markDirty);
 
-    default void onMessagePosted(Message message, long instanceId, boolean sameGuild) {
-        updateMessage(message, instanceId, sameGuild);
+    default void onMessagePosted(Message message, long instanceId, boolean sameGuild, Supplier<String> idString) {
+        updateMessage(message, instanceId, sameGuild, idString);
     }
 
-    void updateMessage(Message message, long instanceId, boolean sameGuild);
+    void updateMessage(Message message, long instanceId, boolean sameGuild, Supplier<String> idString);
 
     String getListenerMessage();
 

@@ -1,8 +1,7 @@
 package nl.elec332.discord.bot.core.api.util;
 
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.interactions.commands.SlashCommandInteraction;
 import nl.elec332.discord.bot.core.api.ICommand;
 import nl.elec332.discord.bot.core.api.IConfigurableBotModule;
 
@@ -56,7 +55,7 @@ public abstract class AbstractConfigurableBotModule<C> implements IConfigurableB
     }
 
     @Override
-    public boolean canRunCommand(MessageChannel channel, Member member, C config, ICommand<C> command) {
+    public boolean canRunCommand(SlashCommandInteraction interaction, C config, ICommand<C> command) {
         return true;
     }
 

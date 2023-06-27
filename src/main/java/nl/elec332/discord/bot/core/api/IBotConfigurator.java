@@ -1,6 +1,7 @@
 package nl.elec332.discord.bot.core.api;
 
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -16,6 +17,9 @@ public interface IBotConfigurator {
     void handleProperties(Function<String, String> propertyGetter, List<String> programArguments);
 
     default void addHelpCommandNames(Consumer<String> names) {
+    }
+
+    default void onBotCreation(JDABuilder builder) {
     }
 
     default void onJDAReady(JDA jda) {

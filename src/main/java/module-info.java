@@ -14,6 +14,8 @@ module nl.elec332.discord.bot.core {
     requires java.desktop;
     requires com.fasterxml.jackson.core;
 
+    requires kotlin.stdlib;
+
     requires static com.google.gson;
 
     uses IBotModule;

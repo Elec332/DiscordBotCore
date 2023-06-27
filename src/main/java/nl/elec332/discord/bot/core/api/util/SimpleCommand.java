@@ -4,7 +4,6 @@ import nl.elec332.discord.bot.core.api.ICommand;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -13,21 +12,24 @@ import java.util.function.Consumer;
  */
 public abstract class SimpleCommand<C> implements ICommand<C> {
 
-    public SimpleCommand(String name, String helpText, String... args) {
+    public SimpleCommand(String name, String description) {
         this.name = name;
-        this.helpText = helpText;
+        this.description = description;
         this.aliases = new HashSet<>();
-        this.args = List.of(args);
         addAliases(this.aliases::add);
     }
 
     private final String name;
-    private final String helpText;
+    private final String description;
     private final Set<String> aliases;
-    private final List<String> args;
 
 
     void addAliases(Consumer<String> reg) {
+    }
+
+    @Override
+    public String getName() {
+        return this.name;
     }
 
     @Override
@@ -36,13 +38,8 @@ public abstract class SimpleCommand<C> implements ICommand<C> {
     }
 
     @Override
-    public final String getHelpText() {
-        return this.helpText;
-    }
-
-    @Override
-    public final String getArgs() {
-        return String.join(",", args);
+    public final String getDescription() {
+        return this.description;
     }
 
     @Override

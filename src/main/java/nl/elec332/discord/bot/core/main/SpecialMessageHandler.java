@@ -3,6 +3,10 @@ package nl.elec332.discord.bot.core.main;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.emoji.CustomEmoji;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
@@ -172,28 +176,32 @@ public class SpecialMessageHandler extends ListenerAdapter {
                         m.locations.stream().map(r -> r.getMessage(jda)).filter(Objects::nonNull).forEach(msg -> {
                             msg.getReactions().forEach(r -> {
                                 if (r.isSelf() && r.getCount() > 1) {
-                                    r.retrieveUsers().forEach(u -> m.message.onReactionMissed(new MessageReaction(msg.getChannel(), r.getReactionEmote(), msg.getIdLong(), false, 1), msg.getGuild().getMember(u), this::save));
+                                    r.retrieveUsers().forEach(u -> {
+                                        System.out.println("User: " + u);
+                                        m.message.onReactionMissed(new MessageReaction(msg.getChannel(), r.getEmoji(), msg.getIdLong(), false, 1), msg.getGuild().retrieveMember(u).complete(), this::save);
+                                        //msg.getGuild().retrieveMember(u).queue(member -> ;
+                                    });
                                 }
                             });
                         });
-                        m.updateMessages(jda);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
+                    m.updateMessages(jda);
                 }
             }
         }
     }
 
-    public static void addLateReaction(Message message, Member member, Collection<Emote> emotes) {
+    public static void addLateReaction(Message message, Member member, Collection<EmojiUnion> emotes) {
         long id = message.getIdLong();
         BotHelper.MessageReference ref = BotHelper.MessageReference.of(message);
         synchronized (instance.activeMessages) {
             for (Collection<WrappedMessage> c : instance.activeMessages.values()) {
                 for (WrappedMessage m : c) {
                     if (m.locations.contains(ref)) {
-                        for (Emote emote : emotes) {
-                            m.message.onReactionMissed(new MessageReaction(message.getChannel(), MessageReaction.ReactionEmote.fromCustom(emote), id, false, 1), member, instance::save);
+                        for (EmojiUnion emote : emotes) {
+                            m.message.onReactionMissed(new MessageReaction(message.getChannel(), emote, id, false, 1), member, instance::save);
                         }
                         m.updateMessages(message.getJDA());
                     }
@@ -279,11 +287,30 @@ public class SpecialMessageHandler extends ListenerAdapter {
         }
 
         void updateMessages(JDA jda) {
-            locations.stream().map(r -> r.getMessage(jda)).filter(Objects::nonNull).forEach(msg -> {
-                message.updateMessage(msg, id, msg.getGuild().getIdLong() == guild);
-            });
+            update(jda, id);
         }
 
+        void onDelete(JDA jda) {
+            update(jda, 0);
+        }
+
+        private void update(JDA jda, final long iid) {
+            locations.stream()
+                    .map(r -> r.getMessage(jda))
+                    .filter(Objects::nonNull)
+                    .forEach(msg ->
+                            message.updateMessage(msg, iid, msg.getGuild().getIdLong() == guild, () -> getID(msg, iid))
+                    );
+        }
+
+        @Override
+        public String toString() {
+            return "WrappedMessage{" +
+                    ", locations=" + locations +
+                    ", id=" + id +
+                    ", type='" + type + '\'' +
+                    '}';
+        }
     }
 
     public void postSpecialMessage_(String type, TextChannel channel, String args) {
@@ -303,40 +330,49 @@ public class SpecialMessageHandler extends ListenerAdapter {
             if (messages.size() > MAX) {
                 messages.removeIf(m -> !m.exists(jda));
                 if (messages.size() > MAX) {
-                    channel.sendMessage("You have over " + MAX + "special messages active in this server. Deactivate or delete the to be able to post a new one.").submit();
+                    channel.sendMessage("You have over " + MAX + " special messages active in this server. Deactivate or delete some of them to be able to post a new one.").submit();
+                    return;
                 }
             }
             message.init(args);
             Message m = channel.sendMessage(".").submit().join();
-            message.onMessagePosted(m, m.getIdLong(), true);
+            message.onMessagePosted(m, m.getIdLong(), true, () -> getID(m, m.getIdLong()));
             WrappedMessage w = new WrappedMessage(type, m, message);
             messages.add(w);
         }
         save();
         module.getMessageListeners(type, guild)
                 .filter(Objects::nonNull)
-                .filter(member -> member.hasPermission(channel, Permission.MESSAGE_READ))
+                .filter(member -> member.hasPermission(channel, Permission.VIEW_CHANNEL))
                 .map(Member::getUser)
                 .forEach(user -> user.openPrivateChannel()
                         .map(c -> c.sendMessage(msg).submit())
                         .submit());
     }
 
-    private void removeMessage_(Message message) {
-        removeMessage(message.getGuild(), m -> m.locations.contains(BotHelper.MessageReference.of(message)));
+    private void removeMessage_(Message message, Member member) {
+        removeMessage(message.getGuild(), m -> m.locations.contains(BotHelper.MessageReference.of(message)), member);
     }
 
-    private void removeMessage_(Guild guild, long id) {
-        removeMessage(guild, m -> m.id == id);
+    private void removeMessage_(Guild guild, long id, Member member) {
+        removeMessage(guild, m -> m.id == id, member);
     }
 
-    private void removeMessage(Guild guild, Predicate<WrappedMessage> test) {
+    private void removeMessage(Guild guild, Predicate<WrappedMessage> test, Member member) {
         synchronized (activeMessages) {
             List<WrappedMessage> messages = this.activeMessages.get(guild.getIdLong());
             if (messages != null) {
-                messages.removeIf(test);
+                List<WrappedMessage> messages_ = new ArrayList<>(messages);
+                for (WrappedMessage m : messages_) {
+                    if (test.test(m)) {
+                        messages.remove(m);
+                        m.onDelete(guild.getJDA());
+                        member.getUser().openPrivateChannel().flatMap(p -> p.sendMessage("Message with id " + m.id + " has been disabled.")).queue();
+                    }
+                }
             }
         }
+        save();
     }
 
     public static void repostMessage(TextChannel channel, long id) {
@@ -344,7 +380,7 @@ public class SpecialMessageHandler extends ListenerAdapter {
         synchronized (instance.activeMessages) {
             instance.activeMessages.values().stream().flatMap(List::stream).filter(w -> w.id == id).findFirst().ifPresent(w -> {
                 Message m = channel.sendMessage(".").submit().join();
-                w.message.onMessagePosted(m, w.id, channel.getGuild().getIdLong() == w.guild);
+                w.message.onMessagePosted(m, w.id, channel.getGuild().getIdLong() == w.guild, () -> getID(m, w.id));
                 w.locations.add(BotHelper.MessageReference.of(m));
                 b[0] = true;
                 instance.save();
@@ -355,16 +391,23 @@ public class SpecialMessageHandler extends ListenerAdapter {
         }
     }
 
-    public static void removeMessage(Message message) {
-        instance.removeMessage_(message);
+    public static void removeMessage(Message message, Member member) {
+        instance.removeMessage_(message, member);
     }
 
-    public static void removeMessage(Guild guild, long id) {
-        instance.removeMessage_(guild, id);
+    public static void removeMessage(Guild guild, long id, Member member) {
+        instance.removeMessage_(guild, id, member);
     }
 
     public static void postSpecialMessage(String type, TextChannel channel, String args) {
         instance.postSpecialMessage_(type, channel, args);
+    }
+
+    private static String getID(Message message, long id) {
+        if (id == 0) {
+            return "Message disabled (removed from database)";
+        }
+        return "Message ID: " + id + " " + (message.getIdLong() == id ? "(Master)" : "(Slave)");
     }
 
 }
